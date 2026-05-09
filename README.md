@@ -123,13 +123,13 @@ The script will ask for:
 The installer downloads the server files from GitHub into:
 
 ```text
-~/notify-relay-server
+/opt/notify-relay-server
 ```
 
 You can override it:
 
 ```bash
-NOTIFY_RELAY_DIR=/opt/notify-relay-server curl -fsSL https://raw.githubusercontent.com/svllvsxprod/Notify_Relay/main/server/install.sh | bash
+NOTIFY_RELAY_DIR=$HOME/notify-relay-server curl -fsSL https://raw.githubusercontent.com/svllvsxprod/Notify_Relay/main/server/install.sh | bash
 ```
 
 ### Own Domain Mode
@@ -165,7 +165,7 @@ What the installer does:
 Get the URL:
 
 ```bash
-cd ~/notify-relay-server
+cd /opt/notify-relay-server
 docker compose logs -f tunnel
 ```
 
@@ -188,7 +188,7 @@ curl -fsSL https://raw.githubusercontent.com/svllvsxprod/Notify_Relay/main/serve
 Useful commands after install:
 
 ```bash
-cd ~/notify-relay-server
+cd /opt/notify-relay-server
 docker compose ps
 docker compose logs -f app
 docker compose logs -f tunnel

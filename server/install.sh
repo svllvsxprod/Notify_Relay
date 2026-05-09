@@ -4,7 +4,7 @@ set -euo pipefail
 APP_NAME="notify-relay"
 APP_REPO="svllvsxprod/Notify_Relay"
 APP_REF="main"
-INSTALL_DIR="${NOTIFY_RELAY_DIR:-$HOME/notify-relay-server}"
+INSTALL_DIR="${NOTIFY_RELAY_DIR:-/opt/notify-relay-server}"
 APP_PORT_INTERNAL="8000"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -92,8 +92,12 @@ ensure_server_files() {
     exit 1
   fi
 
-  mkdir -p "$INSTALL_DIR"
-  cp -R "$extracted/server/." "$INSTALL_DIR/"
+  require_root_for_system_changes
+  $SUDO mkdir -p "$INSTALL_DIR"
+  $SUDO cp -R "$extracted/server/." "$INSTALL_DIR/"
+  if [ -n "$SUDO" ]; then
+    $SUDO chown -R "$(id -u):$(id -g)" "$INSTALL_DIR"
+  fi
   cd "$INSTALL_DIR"
   rm -rf "$tmp"
 }

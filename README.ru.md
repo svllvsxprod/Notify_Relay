@@ -123,13 +123,13 @@ curl -fsSL https://raw.githubusercontent.com/svllvsxprod/Notify_Relay/main/serve
 Installer скачивает серверные файлы из GitHub в:
 
 ```text
-~/notify-relay-server
+/opt/notify-relay-server
 ```
 
 Папку можно переопределить:
 
 ```bash
-NOTIFY_RELAY_DIR=/opt/notify-relay-server curl -fsSL https://raw.githubusercontent.com/svllvsxprod/Notify_Relay/main/server/install.sh | bash
+NOTIFY_RELAY_DIR=$HOME/notify-relay-server curl -fsSL https://raw.githubusercontent.com/svllvsxprod/Notify_Relay/main/server/install.sh | bash
 ```
 
 ### Режим Своего Домена
@@ -165,7 +165,7 @@ https://your-domain.example
 Получить URL:
 
 ```bash
-cd ~/notify-relay-server
+cd /opt/notify-relay-server
 docker compose logs -f tunnel
 ```
 
@@ -188,7 +188,7 @@ curl -fsSL https://raw.githubusercontent.com/svllvsxprod/Notify_Relay/main/serve
 Полезные команды после установки:
 
 ```bash
-cd ~/notify-relay-server
+cd /opt/notify-relay-server
 docker compose ps
 docker compose logs -f app
 docker compose logs -f tunnel

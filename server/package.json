@@ -1,0 +1,17 @@
+{
+  "name": "notify-relay-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "tunnel": "cloudflared tunnel --url http://localhost:8000"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2",
+    "nanoid": "^5.0.7",
+    "pg": "^8.20.0"
+  }
+}

@@ -1,0 +1,41 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+local.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+
+# Runtime data
+server/data/
+server/docker-compose.override.yml
+
+# Dependencies
+node_modules/
+server/node_modules/
+.opencode/
+.cache/
+
+# Local planning/design scratch files not needed for public repo
+/android_notification_sms_relay_codex_tz.md
+/NotificationRelayDesign.kt
+/NotificationRelayTheme.kt
+
+# Android/Gradle build outputs
+.gradle/
+build/
+android-app/.gradle/
+android-app/**/build/
+
+# IDE and OS files
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

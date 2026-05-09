@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-notify_relay}
+      POSTGRES_USER: ${POSTGRES_USER:-notify_relay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      PORT: 8000
+      DATABASE_URL: postgres://${POSTGRES_USER:-notify_relay}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-notify_relay}
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    profiles:
+      - tunnel
+    depends_on:
+      - app
+    command: tunnel --no-autoupdate --url http://app:8000
+
+volumes:
+  postgres-data:

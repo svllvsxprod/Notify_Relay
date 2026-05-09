@@ -93,7 +93,12 @@ private enum class Tab(val icon: ImageVector) {
 
 @Composable
 fun NotifyRelayAppRoot(container: AppContainer, requestSmsPermission: () -> Unit) {
-    val settings by container.settingsRepository.settings.collectAsState(initial = com.svllvsx.notifyrelay.domain.model.AppSettings())
+    val loadedSettings by container.settingsRepository.settings.collectAsState(initial = null)
+    val settings = loadedSettings
+    if (settings == null) {
+        LoadingScreen()
+        return
+    }
     val s = strings(settings.language)
     var tab by remember { mutableStateOf(Tab.Dashboard) }
     var serverUrl by remember(settings.serverUrl) { mutableStateOf(settings.serverUrl.ifBlank { "http://10.0.2.2:8000" }) }
@@ -188,6 +193,16 @@ fun NotifyRelayAppRoot(container: AppContainer, requestSmsPermission: () -> Unit
             Tab.Settings -> Settings(container, padding, requestSmsPermission, s)
             Tab.Diagnostics -> Diagnostics(container, padding, s)
         }
+    }
+}
+
+@Composable
+private fun LoadingScreen() {
+    Box(
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Rounded.Hub, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
     }
 }
 

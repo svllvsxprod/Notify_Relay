@@ -2,6 +2,9 @@
 set -euo pipefail
 
 APP_NAME="notify-relay"
+APP_REPO="svllvsxprod/Notify_Relay"
+APP_REF="main"
+INSTALL_DIR="${NOTIFY_RELAY_DIR:-$HOME/notify-relay-server}"
 APP_PORT_INTERNAL="8000"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -59,6 +62,40 @@ require_root_for_system_changes() {
   else
     SUDO=""
   fi
+}
+
+ensure_server_files() {
+  if [ -f docker-compose.yml ] && [ -f Dockerfile ] && [ -f src/index.js ]; then
+    return
+  fi
+
+  say "Скачиваю серверную часть Notify Relay из GitHub в $INSTALL_DIR." "Downloading Notify Relay server from GitHub into $INSTALL_DIR."
+
+  if ! command -v curl >/dev/null 2>&1; then
+    say "Нужен curl. Установите curl и повторите запуск." "curl is required. Install curl and run again."
+    exit 1
+  fi
+  if ! command -v tar >/dev/null 2>&1; then
+    say "Нужен tar. Установите tar и повторите запуск." "tar is required. Install tar and run again."
+    exit 1
+  fi
+
+  local tmp archive extracted
+  tmp="$(mktemp -d)"
+  archive="$tmp/source.tar.gz"
+  curl -fsSL "https://github.com/$APP_REPO/archive/refs/heads/$APP_REF.tar.gz" -o "$archive"
+  tar -xzf "$archive" -C "$tmp"
+  extracted="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -n1)"
+
+  if [ -z "$extracted" ] || [ ! -d "$extracted/server" ]; then
+    say "В архиве GitHub не найдена папка server." "The GitHub archive does not contain the server directory."
+    exit 1
+  fi
+
+  mkdir -p "$INSTALL_DIR"
+  cp -R "$extracted/server/." "$INSTALL_DIR/"
+  cd "$INSTALL_DIR"
+  rm -rf "$tmp"
 }
 
 install_docker_if_needed() {
@@ -283,6 +320,8 @@ case "$language_number" in
   1) LANG_CHOICE="ru" ;;
   *) LANG_CHOICE="en" ;;
 esac
+
+ensure_server_files
 
 if [ -f .env ] && [ "$RECONFIGURE" != "--reconfigure" ]; then
   show_existing_status

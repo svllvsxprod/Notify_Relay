@@ -31,11 +31,11 @@
 ## Скриншоты
 
 <p align="center">
-  <img src="screens/first_launch.png" width="175" alt="Первый запуск" />
-  <img src="screens/main.png" width="175" alt="Главный экран" />
-  <img src="screens/app_screen.png" width="175" alt="Выбор приложений" />
-  <img src="screens/settings.png" width="175" alt="Настройки" />
-  <img src="screens/diagnostic.png" width="175" alt="Диагностика" />
+  <img src="screens/first_launch.png" width="150" alt="Первый запуск" />
+  <img src="screens/main.png" width="150" alt="Главный экран" />
+  <img src="screens/app_screen.png" width="150" alt="Выбор приложений" />
+  <img src="screens/settings.png" width="150" alt="Настройки" />
+  <img src="screens/diagnostic.png" width="150" alt="Диагностика" />
 </p>
 
 ## Что Делает Приложение

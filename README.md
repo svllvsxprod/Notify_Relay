@@ -31,11 +31,11 @@
 ## Screenshots
 
 <p align="center">
-  <img src="screens/first_launch.png" width="175" alt="First launch" />
-  <img src="screens/main.png" width="175" alt="Dashboard" />
-  <img src="screens/app_screen.png" width="175" alt="Application picker" />
-  <img src="screens/settings.png" width="175" alt="Settings" />
-  <img src="screens/diagnostic.png" width="175" alt="Diagnostics" />
+  <img src="screens/first_launch.png" width="150" alt="First launch" />
+  <img src="screens/main.png" width="150" alt="Dashboard" />
+  <img src="screens/app_screen.png" width="150" alt="Application picker" />
+  <img src="screens/settings.png" width="150" alt="Settings" />
+  <img src="screens/diagnostic.png" width="150" alt="Diagnostics" />
 </p>
 
 ## What It Does

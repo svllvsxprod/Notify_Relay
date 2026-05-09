@@ -1,5 +1,7 @@
 package com.svllvsx.notifyrelay.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.Image
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Search
@@ -307,6 +310,7 @@ private fun Settings(container: AppContainer, padding: PaddingValues, requestSms
     var showSmsHelp by remember { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { ScreenTitle(s.settingsTitle, s.settingsSubtitle) }
+        item { SupportProjectCard(s) { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://nowpayments.io/donation/svllvsx"))) } }
         item {
             SettingsCard(s.server) {
                 CodeLine(settings.serverUrl.ifBlank { s.notSet })
@@ -494,6 +498,7 @@ private enum class RelayTone { Primary, Success, Warning, Error }
 @Composable private fun StatusCard(icon: ImageVector, title: String, text: String, tone: RelayTone) { val colors = toneColors(tone); Card(shape = RelayShape.cardSmall, colors = CardDefaults.cardColors(containerColor = colors.first, contentColor = colors.second), modifier = Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, modifier = Modifier.size(28.dp)); Column { Text(title, style = MaterialTheme.typography.titleMedium); Text(text, style = MaterialTheme.typography.bodyMedium) } } } }
 @Composable private fun PermissionRow(icon: ImageVector, title: String, enabled: Boolean, s: UiStrings, onClick: () -> Unit) { val tone = if (enabled) RelayTone.Success else RelayTone.Warning; SectionCard { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = toneColors(tone).second); Column(Modifier.weight(1f)) { Text(title, style = MaterialTheme.typography.titleMedium); Text(if (enabled) s.enabled else s.required, color = toneColors(tone).second) }; Button(onClick, shape = RelayShape.pill, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = toneColors(tone).first, contentColor = toneColors(tone).second)) { Text(if (enabled) s.done else s.open) } } } }
 @Composable private fun PermissionInlineRow(icon: ImageVector, title: String, enabled: Boolean, s: UiStrings, onClick: () -> Unit) { val tone = if (enabled) RelayTone.Success else RelayTone.Warning; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = toneColors(tone).second); Column(Modifier.weight(1f)) { Text(title, style = MaterialTheme.typography.titleMedium); Text(if (enabled) s.enabled else s.required, color = toneColors(tone).second) }; Button(onClick, shape = RelayShape.pill, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = toneColors(tone).first, contentColor = toneColors(tone).second)) { Text(if (enabled) s.done else s.open) } } }
+@Composable private fun SupportProjectCard(s: UiStrings, onClick: () -> Unit) { Card(shape = RelayShape.cardSmall, colors = CardDefaults.cardColors(containerColor = Color(0xFF35204A), contentColor = Color(0xFFFFD7F3)), modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Favorite, null, modifier = Modifier.size(28.dp)); Column(Modifier.weight(1f)) { Text(s.supportProject, style = MaterialTheme.typography.titleMedium); Text(s.supportProjectDesc, style = MaterialTheme.typography.bodyMedium) } }; Button(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RelayShape.pill, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD7F3), contentColor = Color(0xFF35204A))) { Text(s.supportProjectButton) } } } }
 @Composable private fun AppListItem(app: InstalledApp, selected: Boolean, onChecked: (Boolean) -> Unit) { SectionCard { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { AppIcon(app.packageName, app.label); Column(Modifier.weight(1f)) { Text(app.label, style = MaterialTheme.typography.titleMedium); Text(app.packageName, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }; Switch(selected, onChecked) } } }
 @Composable private fun AppIcon(packageName: String, label: String) { val context = LocalContext.current; val bitmap = remember(packageName) { runCatching { context.packageManager.getApplicationIcon(packageName).toBitmap(96, 96).asImageBitmap() }.getOrNull() }; Box(Modifier.size(42.dp).background(MaterialTheme.colorScheme.secondaryContainer, RelayShape.cardSmall), contentAlignment = Alignment.Center) { if (bitmap != null) Image(bitmap, contentDescription = label, modifier = Modifier.size(34.dp)) else Text(label.take(2).uppercase(), fontWeight = FontWeight.Bold) } }
 @Composable private fun SearchField(value: String, onValueChange: (String) -> Unit, placeholder: String) {

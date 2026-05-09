@@ -13,6 +13,12 @@
 </p>
 
 <p align="center">
+  <a href="https://nowpayments.io/donation/svllvsx">
+    <img alt="Support the project" src="https://img.shields.io/badge/Support%20the%20project-NOWPayments-6D5DFB?style=for-the-badge&logo=bitcoin&logoColor=white">
+  </a>
+</p>
+
+<p align="center">
   <img alt="Android" src="https://img.shields.io/badge/Android-Kotlin%20%2B%20Compose-3DDC84?style=for-the-badge&logo=android&logoColor=white">
   <img alt="Server" src="https://img.shields.io/badge/Server-Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white">
   <img alt="PostgreSQL" src="https://img.shields.io/badge/Database-PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white">

@@ -12,11 +12,17 @@
   <a href="README.md">English version</a>
 </p>
 
-<p align="center">
-  <a href="https://nowpayments.io/donation/svllvsx">
-    <img alt="Поддержать проект" src="https://img.shields.io/badge/Поддержать%20проект-NOWPayments-6D5DFB?style=for-the-badge&logo=bitcoin&logoColor=white">
-  </a>
-</p>
+<table align="center">
+  <tr>
+    <td align="center" width="760">
+      <h3>Помогите Notify Relay оставаться независимым</h3>
+      <p>Если проект оказался полезен, можно поддержать дальнейшую разработку, тестирование и серверные инструменты.</p>
+      <a href="https://nowpayments.io/donation/svllvsx">
+        <img alt="Поддержать через NOWPayments" src="https://img.shields.io/badge/Поддержать%20Notify%20Relay-NOWPayments-7C3AED?style=for-the-badge&logo=bitcoin&logoColor=white&labelColor=111827">
+      </a>
+    </td>
+  </tr>
+</table>
 
 <p align="center">
   <img alt="Android" src="https://img.shields.io/badge/Android-Kotlin%20%2B%20Compose-3DDC84?style=for-the-badge&logo=android&logoColor=white">

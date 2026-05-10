@@ -208,10 +208,10 @@ function formatTelegramMessage(event) {
   ];
 
   if (title && title !== text) {
-    lines.push('', `<b>${escapeHtml(title)}</b>`);
+    lines.push('', `<b>${formatCopyableFragments(title)}</b>`);
   }
 
-  lines.push('', escapeHtml(text));
+  lines.push('', formatCopyableFragments(text));
 
   return lines.join('\n');
 }
@@ -249,6 +249,41 @@ function escapeHtml(value) {
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
+}
+
+function formatCopyableFragments(value) {
+  const text = String(value ?? '');
+  const matches = [];
+  const phonePattern = /(?:\+?\d[\d\s().-]{8,}\d)/g;
+  const codePattern = /(?<![\w])(?:\d{3}[-\s]?\d{3}|\d{4,8})(?![\w])/g;
+
+  collectMatches(text, phonePattern, (match) => {
+    const href = match.replace(/(?!^)\D/g, '');
+    return `<a href="tel:${href}">${escapeHtml(match)}</a>`;
+  }, matches);
+  collectMatches(text, codePattern, (match) => `<code>${escapeHtml(match)}</code>`, matches);
+
+  matches.sort((left, right) => left.index - right.index || right.end - left.end);
+  const accepted = [];
+  for (const match of matches) {
+    if (!accepted.some((item) => match.index < item.end && match.end > item.index)) accepted.push(match);
+  }
+
+  let result = '';
+  let cursor = 0;
+  for (const match of accepted) {
+    result += escapeHtml(text.slice(cursor, match.index));
+    result += match.html;
+    cursor = match.end;
+  }
+  return result + escapeHtml(text.slice(cursor));
+}
+
+function collectMatches(text, pattern, render, matches) {
+  for (const match of text.matchAll(pattern)) {
+    const value = match[0];
+    matches.push({ index: match.index, end: match.index + value.length, html: render(value) });
+  }
 }
 
 async function telegramApi(method, payload) {

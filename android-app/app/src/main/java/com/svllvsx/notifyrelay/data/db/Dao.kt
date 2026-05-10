@@ -30,6 +30,9 @@ interface EventDao {
     @Query("SELECT COUNT(*) FROM events WHERE status = :status")
     fun countByStatus(status: String): Flow<Int>
 
+    @Query("SELECT * FROM events WHERE createdAt >= :since ORDER BY createdAt DESC LIMIT :limit")
+    fun observeRecent(since: Long, limit: Int): Flow<List<EventEntity>>
+
     @Query("DELETE FROM events WHERE status = 'sent' AND createdAt < :timestamp")
     suspend fun deleteSentOlderThan(timestamp: Long)
 }

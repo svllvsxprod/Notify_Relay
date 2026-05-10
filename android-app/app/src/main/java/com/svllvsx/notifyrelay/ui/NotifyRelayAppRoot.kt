@@ -2,6 +2,8 @@ package com.svllvsx.notifyrelay.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.Image
@@ -43,6 +45,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -81,6 +84,9 @@ import androidx.core.graphics.drawable.toBitmap
 import com.svllvsx.notifyrelay.core.AppResult
 import com.svllvsx.notifyrelay.core.AppError
 import com.svllvsx.notifyrelay.core.AppContainer
+import com.svllvsx.notifyrelay.data.db.EventEntity
+import com.svllvsx.notifyrelay.data.db.EventStatus
+import com.svllvsx.notifyrelay.data.repositories.UpdateInfo
 import com.svllvsx.notifyrelay.domain.model.AppLanguage
 import com.svllvsx.notifyrelay.domain.model.PrivacyMode
 import com.svllvsx.notifyrelay.domain.model.InstalledApp
@@ -284,10 +290,12 @@ private fun Dashboard(container: AppContainer, padding: PaddingValues, s: UiStri
     val settings by container.settingsRepository.settings.collectAsState(initial = com.svllvsx.notifyrelay.domain.model.AppSettings())
     val pending by container.eventsRepository.pendingCount().collectAsState(initial = 0)
     val failed by container.eventsRepository.failedCount().collectAsState(initial = 0)
+    val recentEvents by container.eventsRepository.recentEvents().collectAsState(initial = emptyList())
     LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { ScreenTitle(s.relayTitle, s.relaySubtitle, if (settings.lastSyncError == null) s.online else s.issue) }
         item { HeroStatusCard(Icons.Rounded.CheckCircle, s.deviceLinked, s.eventsViaServer, "${s.lastSync}: ${if (settings.lastSyncAt == 0L) s.never else settings.lastSyncAt}") }
         item { QueueCard(pending, failed, settings.lastSyncError, s) }
+        item { RecentEventsCard(recentEvents, s) }
     }
 }
 
@@ -323,9 +331,51 @@ private fun Settings(container: AppContainer, padding: PaddingValues, requestSms
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var showSmsHelp by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    var updateStatus by remember { mutableStateOf<String?>(null) }
+    var updateProgress by remember { mutableStateOf(0f) }
+    var downloadingUpdate by remember { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { ScreenTitle(s.settingsTitle, s.settingsSubtitle) }
         item { SupportProjectCard(s) { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://nowpayments.io/donation/svllvsx"))) } }
+        item {
+            UpdatesCard(
+                s = s,
+                updateInfo = updateInfo,
+                status = updateStatus,
+                progress = updateProgress,
+                downloading = downloadingUpdate,
+                onCheck = {
+                    scope.launch {
+                        updateStatus = null
+                        when (val result = container.updatesRepository.checkLatestRelease()) {
+                            is AppResult.Success -> {
+                                updateInfo = result.data
+                                updateStatus = if (result.data.hasUpdate) "${s.updateAvailable}: ${result.data.latestVersion}" else s.appUpToDate
+                            }
+                            is AppResult.Error -> updateStatus = s.updateCheckFailed
+                        }
+                    }
+                },
+                onDownload = {
+                    val info = updateInfo ?: return@UpdatesCard
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
+                        context.startActivity(Intent(AndroidSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))
+                        return@UpdatesCard
+                    }
+                    scope.launch {
+                        downloadingUpdate = true
+                        updateProgress = 0f
+                        when (val result = container.updatesRepository.downloadApk(info) { updateProgress = it }) {
+                            is AppResult.Success -> context.startActivity(container.updatesRepository.installIntent(result.data))
+                            is AppResult.Error -> updateStatus = s.updateCheckFailed
+                        }
+                        downloadingUpdate = false
+                    }
+                },
+                onOpenRelease = { updateInfo?.releaseUrl?.let { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) } },
+            )
+        }
         item {
             SettingsCard(s.server) {
                 CodeLine(settings.serverUrl.ifBlank { s.notSet })
@@ -514,6 +564,7 @@ private enum class RelayTone { Primary, Success, Warning, Error }
 @Composable private fun PermissionRow(icon: ImageVector, title: String, enabled: Boolean, s: UiStrings, onClick: () -> Unit) { val tone = if (enabled) RelayTone.Success else RelayTone.Warning; SectionCard { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = toneColors(tone).second); Column(Modifier.weight(1f)) { Text(title, style = MaterialTheme.typography.titleMedium); Text(if (enabled) s.enabled else s.required, color = toneColors(tone).second) }; Button(onClick, shape = RelayShape.pill, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = toneColors(tone).first, contentColor = toneColors(tone).second)) { Text(if (enabled) s.done else s.open) } } } }
 @Composable private fun PermissionInlineRow(icon: ImageVector, title: String, enabled: Boolean, s: UiStrings, onClick: () -> Unit) { val tone = if (enabled) RelayTone.Success else RelayTone.Warning; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = toneColors(tone).second); Column(Modifier.weight(1f)) { Text(title, style = MaterialTheme.typography.titleMedium); Text(if (enabled) s.enabled else s.required, color = toneColors(tone).second) }; Button(onClick, shape = RelayShape.pill, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = toneColors(tone).first, contentColor = toneColors(tone).second)) { Text(if (enabled) s.done else s.open) } } }
 @Composable private fun SupportProjectCard(s: UiStrings, onClick: () -> Unit) { Card(shape = RelayShape.cardSmall, colors = CardDefaults.cardColors(containerColor = Color(0xFF35204A), contentColor = Color(0xFFFFD7F3)), modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Favorite, null, modifier = Modifier.size(28.dp)); Column(Modifier.weight(1f)) { Text(s.supportProject, style = MaterialTheme.typography.titleMedium); Text(s.supportProjectDesc, style = MaterialTheme.typography.bodyMedium) } }; Button(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RelayShape.pill, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD7F3), contentColor = Color(0xFF35204A))) { Text(s.supportProjectButton) } } } }
+@Composable private fun UpdatesCard(s: UiStrings, updateInfo: UpdateInfo?, status: String?, progress: Float, downloading: Boolean, onCheck: () -> Unit, onDownload: () -> Unit, onOpenRelease: () -> Unit) { SettingsCard(s.updates) { if (status != null) Text(status, color = MaterialTheme.colorScheme.onSurfaceVariant); if (downloading) { LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth()); Text("${s.downloadingUpdate}: ${(progress * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { Button(onClick = onCheck, enabled = !downloading, modifier = Modifier.weight(1f), shape = RelayShape.pill) { Text(s.checkUpdates) }; if (updateInfo?.hasUpdate == true && updateInfo.apkUrl != null) Button(onClick = onDownload, enabled = !downloading, modifier = Modifier.weight(1f), shape = RelayShape.pill) { Text(s.downloadAndInstall) } }; if (updateInfo != null) TextButton(onClick = onOpenRelease, enabled = !downloading, modifier = Modifier.fillMaxWidth()) { Text(s.openRelease) } } }
 @Composable private fun AppListItem(app: InstalledApp, selected: Boolean, onChecked: (Boolean) -> Unit) { SectionCard { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { AppIcon(app.packageName, app.label); Column(Modifier.weight(1f)) { Text(app.label, style = MaterialTheme.typography.titleMedium); Text(app.packageName, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }; Switch(selected, onChecked) } } }
 @Composable private fun AppIcon(packageName: String, label: String) { val context = LocalContext.current; val bitmap = remember(packageName) { runCatching { context.packageManager.getApplicationIcon(packageName).toBitmap(96, 96).asImageBitmap() }.getOrNull() }; Box(Modifier.size(42.dp).background(MaterialTheme.colorScheme.secondaryContainer, RelayShape.cardSmall), contentAlignment = Alignment.Center) { if (bitmap != null) Image(bitmap, contentDescription = label, modifier = Modifier.size(34.dp)) else Text(label.take(2).uppercase(), fontWeight = FontWeight.Bold) } }
 @Composable private fun SearchField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
@@ -539,6 +590,9 @@ private enum class RelayTone { Primary, Success, Warning, Error }
 }
 @Composable private fun HeroStatusCard(icon: ImageVector, title: String, text: String, detail: String) { val colors = toneColors(RelayTone.Success); Card(shape = RelayShape.hero, colors = CardDefaults.cardColors(containerColor = colors.first, contentColor = colors.second), modifier = Modifier.fillMaxWidth()) { Row(Modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) { Icon(icon, null, modifier = Modifier.size(34.dp)); Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(title, style = MaterialTheme.typography.titleLarge); Text(text); Text(detail, style = MaterialTheme.typography.labelLarge) } } } }
 @Composable private fun QueueCard(pending: Int, failed: Int, error: String?, s: UiStrings) { SectionCard { Text(s.eventQueue, style = MaterialTheme.typography.titleMedium); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { Metric(s.pending, pending.toString(), Modifier.weight(1f)); Metric(s.failed, failed.toString(), Modifier.weight(1f)); Metric(s.status, if (error == null) s.ok else s.error, Modifier.weight(1f)) } } }
+@Composable private fun RecentEventsCard(events: List<EventEntity>, s: UiStrings) { SectionCard { Text(s.recentEvents, style = MaterialTheme.typography.titleMedium); if (events.isEmpty()) { Text(s.noRecentEvents, color = MaterialTheme.colorScheme.onSurfaceVariant) } else { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { events.take(20).forEach { RecentEventRow(it) } } } } }
+@Composable private fun RecentEventRow(event: EventEntity) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(event.appLabel ?: event.sender ?: event.packageName ?: event.type.uppercase(), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(event.bigText?.takeIf { it.isNotBlank() } ?: event.text ?: event.title ?: event.type, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis) }; StatusDot(event.status) } }
+@Composable private fun StatusDot(status: String) { val color = when (status) { EventStatus.SENT -> Color(0xFF52D273); EventStatus.FAILED -> MaterialTheme.colorScheme.error; else -> Color(0xFFFFC857) }; Box(Modifier.size(12.dp).background(color, RelayShape.pill)) }
 @Composable private fun Metric(label: String, value: String, modifier: Modifier = Modifier) { Surface(modifier = modifier, shape = RelayShape.cardSmall, color = MaterialTheme.colorScheme.surfaceContainerHighest) { Column(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text(value, style = MaterialTheme.typography.titleLarge, maxLines = 1); Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1) } } }
 @Composable private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) { SectionCard { Text(title, style = MaterialTheme.typography.titleMedium); content() } }
 @Composable private fun ToggleRow(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(label); Switch(checked, onChecked) } }

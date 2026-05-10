@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import android.os.Build
+import androidx.core.content.FileProvider
 import com.svllvsx.notifyrelay.notifications.AppNotificationListenerService
 import com.svllvsx.notifyrelay.BuildConfig
 import com.svllvsx.notifyrelay.core.AppError
@@ -36,6 +37,10 @@ import kotlinx.coroutines.flow.map
 import retrofit2.Response
 import java.text.Collator
 import java.util.Locale
+import org.json.JSONObject
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 class SettingsRepository(private val store: AppSettingsDataStore) {
     val settings = store.settings
@@ -97,6 +102,7 @@ class DeviceRepository(
 class EventsRepository(private val dao: EventDao) {
     fun pendingCount(): Flow<Int> = dao.countByStatus(EventStatus.PENDING)
     fun failedCount(): Flow<Int> = dao.countByStatus(EventStatus.FAILED)
+    fun recentEvents(days: Int = 3, limit: Int = 50): Flow<List<EventEntity>> = dao.observeRecent(System.currentTimeMillis() - days * 24L * 60L * 60L * 1000L, limit)
     suspend fun insert(event: EventEntity) = dao.insertIgnore(event)
     suspend fun getPending(limit: Int = 25) = dao.getPending(limit)
     suspend fun markSending(events: List<EventEntity>) = dao.markSending(events.map { it.id })
@@ -154,6 +160,87 @@ class PermissionsRepository(private val context: Context) {
     fun appDetailsSettingsIntent(): Intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
         .setData(Uri.fromParts("package", context.packageName, null))
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+}
+
+data class UpdateInfo(val latestVersion: String, val releaseUrl: String, val apkUrl: String?, val apkName: String?, val hasUpdate: Boolean)
+
+class UpdatesRepository(private val context: Context) {
+    suspend fun checkLatestRelease(): AppResult<UpdateInfo> = try {
+        val connection = (URL("https://api.github.com/repos/svllvsxprod/Notify_Relay/releases/latest").openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 10_000
+            readTimeout = 10_000
+            setRequestProperty("Accept", "application/vnd.github+json")
+            setRequestProperty("User-Agent", "NotifyRelay/${BuildConfig.VERSION_NAME}")
+        }
+        connection.inputStream.bufferedReader().use { reader ->
+            val json = JSONObject(reader.readText())
+            val tag = json.getString("tag_name")
+            val url = json.getString("html_url")
+            val assets = json.getJSONArray("assets")
+            var apkUrl: String? = null
+            var apkName: String? = null
+            for (index in 0 until assets.length()) {
+                val asset = assets.getJSONObject(index)
+                val name = asset.getString("name")
+                if (name.endsWith(".apk", ignoreCase = true)) {
+                    apkName = name
+                    apkUrl = asset.getString("browser_download_url")
+                    break
+                }
+            }
+            AppResult.Success(UpdateInfo(tag, url, apkUrl, apkName, isNewerVersion(tag.removePrefix("v"), BuildConfig.VERSION_NAME)))
+        }
+    } catch (_: Exception) {
+        AppResult.Error(AppError.Network)
+    }
+
+    suspend fun downloadApk(info: UpdateInfo, onProgress: (Float) -> Unit): AppResult<Uri> = try {
+        val apkUrl = requireNotNull(info.apkUrl)
+        val apkName = info.apkName ?: "Notify-Relay-${info.latestVersion}.apk"
+        val connection = (URL(apkUrl).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 15_000
+            readTimeout = 30_000
+            setRequestProperty("User-Agent", "NotifyRelay/${BuildConfig.VERSION_NAME}")
+        }
+        val total = connection.contentLengthLong.takeIf { it > 0L } ?: -1L
+        val directory = File(context.cacheDir, "updates").apply { mkdirs() }
+        val file = File(directory, apkName).apply { if (exists()) delete() }
+        var downloaded = 0L
+        connection.inputStream.use { input ->
+            file.outputStream().use { output ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read == -1) break
+                    output.write(buffer, 0, read)
+                    downloaded += read
+                    if (total > 0L) onProgress((downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f))
+                }
+            }
+        }
+        onProgress(1f)
+        AppResult.Success(FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.fileprovider", file))
+    } catch (_: Exception) {
+        AppResult.Error(AppError.Network)
+    }
+
+    fun installIntent(uri: Uri): Intent = Intent(Intent.ACTION_VIEW)
+        .setDataAndType(uri, "application/vnd.android.package-archive")
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+}
+
+private fun isNewerVersion(remote: String, current: String): Boolean {
+    val remoteParts = remote.split('.', '-').mapNotNull { it.toIntOrNull() }
+    val currentParts = current.split('.', '-').mapNotNull { it.toIntOrNull() }
+    repeat(maxOf(remoteParts.size, currentParts.size)) { index ->
+        val remotePart = remoteParts.getOrNull(index) ?: 0
+        val currentPart = currentParts.getOrNull(index) ?: 0
+        if (remotePart != currentPart) return remotePart > currentPart
+    }
+    return false
 }
 
 suspend fun uploadEvents(apiFactory: ApiClientFactory, eventsRepository: EventsRepository, events: List<EventEntity>): AppResult<Unit> {

@@ -9,6 +9,7 @@ import com.svllvsx.notifyrelay.data.repositories.DeviceRepository
 import com.svllvsx.notifyrelay.data.repositories.EventsRepository
 import com.svllvsx.notifyrelay.data.repositories.PermissionsRepository
 import com.svllvsx.notifyrelay.data.repositories.SettingsRepository
+import com.svllvsx.notifyrelay.data.repositories.UpdatesRepository
 import com.svllvsx.notifyrelay.data.security.SecureTokenStorage
 import com.svllvsx.notifyrelay.data.settings.AppSettingsDataStore
 import com.svllvsx.notifyrelay.domain.usecase.ApplyPrivacyModeUseCase
@@ -33,6 +34,7 @@ class AppContainer(private val context: Context) {
     val eventsRepository = EventsRepository(database.eventDao())
     val appsRepository = AppsRepository(context, database.selectedAppDao())
     val permissionsRepository = PermissionsRepository(context)
+    val updatesRepository = UpdatesRepository(context)
     val workerScheduler = WorkerScheduler(context)
     val privacyModeUseCase = ApplyPrivacyModeUseCase(settingsRepository)
     val saveNotificationEventUseCase = SaveNotificationEventUseCase(context, eventsRepository, appsRepository, privacyModeUseCase, workerScheduler)

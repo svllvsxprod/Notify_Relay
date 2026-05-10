@@ -104,6 +104,7 @@ class DeviceRepository(
 class EventsRepository(private val dao: EventDao) {
     fun pendingCount(): Flow<Int> = dao.countByStatus(EventStatus.PENDING)
     fun failedCount(): Flow<Int> = dao.countByStatus(EventStatus.FAILED)
+    fun sentCount(days: Int = 3): Flow<Int> = dao.countSentSince(System.currentTimeMillis() - days * 24L * 60L * 60L * 1000L)
     fun recentEvents(days: Int = 3, limit: Int = 50): Flow<List<EventEntity>> = dao.observeRecent(System.currentTimeMillis() - days * 24L * 60L * 60L * 1000L, limit)
     suspend fun insert(event: EventEntity) = dao.insertIgnore(event)
     suspend fun getPending(limit: Int = 25) = dao.getPending(limit)

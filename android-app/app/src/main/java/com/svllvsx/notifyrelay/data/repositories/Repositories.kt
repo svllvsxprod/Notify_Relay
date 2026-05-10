@@ -1,5 +1,6 @@
 package com.svllvsx.notifyrelay.data.repositories
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.ComponentName
@@ -147,6 +148,7 @@ class AppsRepository(private val context: Context, private val dao: SelectedAppD
 class PermissionsRepository(private val context: Context) {
     fun hasNotificationAccess(): Boolean = PermissionUtils.hasNotificationAccess(context)
     fun hasSmsPermission(): Boolean = PermissionUtils.hasSmsPermission(context)
+    fun hasPostNotificationsPermission(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     fun isIgnoringBatteryOptimizations(): Boolean = (context.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(context.packageName)
     fun notificationSettingsIntent(): Intent {
         val componentName = ComponentName(context, AppNotificationListenerService::class.java).flattenToString()
@@ -163,9 +165,7 @@ class PermissionsRepository(private val context: Context) {
         .setData(Uri.fromParts("package", context.packageName, null))
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    fun batteryOptimizationIntent(): Intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-        .setData(Uri.parse("package:${context.packageName}"))
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    fun batteryOptimizationIntent(): Intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 }
 
 data class UpdateInfo(val latestVersion: String, val releaseUrl: String, val apkUrl: String?, val apkName: String?, val hasUpdate: Boolean)

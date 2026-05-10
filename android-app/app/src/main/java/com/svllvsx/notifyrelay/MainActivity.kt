@@ -7,12 +7,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Surface
+import com.svllvsx.notifyrelay.keepalive.KeepAliveService
 import com.svllvsx.notifyrelay.ui.NotifyRelayAppRoot
 import com.svllvsx.notifyrelay.ui.theme.NotificationRelayTheme
 
 class MainActivity : ComponentActivity() {
     private val smsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) KeepAliveService.start(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -211,7 +211,7 @@ docker compose up -d --build
 ## Установка Android-Приложения
 
 1. Откройте последний GitHub Release.
-2. Скачайте APK с именем вида `Notify-Relay-v1.5.0-release.apk`.
+2. Скачайте APK с именем вида `Notify-Relay-v1.5.1-release.apk`.
 3. Установите APK на Android-устройство.
 4. Откройте приложение.
 5. Введите URL сервера.

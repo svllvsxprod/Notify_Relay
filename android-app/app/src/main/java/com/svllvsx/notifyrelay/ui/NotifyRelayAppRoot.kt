@@ -58,6 +58,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -198,7 +199,7 @@ fun NotifyRelayAppRoot(container: AppContainer, requestSmsPermission: () -> Unit
             Tab.Dashboard -> Dashboard(container, padding, s, requestPostNotifications)
             Tab.Apps -> Apps(container, padding, s)
             Tab.Settings -> Settings(container, padding, requestSmsPermission, s)
-            Tab.Diagnostics -> Diagnostics(container, padding, s)
+            Tab.Diagnostics -> Diagnostics(container, padding, requestSmsPermission, s)
         }
     }
 }
@@ -294,18 +295,23 @@ private fun Dashboard(container: AppContainer, padding: PaddingValues, s: UiStri
     val recentEvents by container.eventsRepository.recentEvents().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    LaunchedEffect(settings.notificationForwardingEnabled) {
+        if (settings.notificationForwardingEnabled) KeepAliveService.start(context)
+    }
     LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { ScreenTitle(s.relayTitle, s.relaySubtitle, if (settings.lastSyncError == null) s.online else s.issue) }
         item {
             RelayPowerCard(
                 enabled = settings.notificationForwardingEnabled,
                 batteryOptimized = !container.permissionsRepository.isIgnoringBatteryOptimizations(),
+                notificationPermissionMissing = !container.permissionsRepository.hasPostNotificationsPermission(),
                 s = s,
                 onEnabledChange = { enabled ->
                     if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) requestPostNotifications()
                     KeepAliveService.sync(context, enabled)
                     scope.launch { container.settingsRepository.setNotificationForwarding(enabled) }
                 },
+                onNotificationPermission = requestPostNotifications,
                 onBattery = { context.startActivity(container.permissionsRepository.batteryOptimizationIntent()) },
             )
         }
@@ -507,15 +513,17 @@ private fun SmsPermissionHelpDialog(s: UiStrings, onDismiss: () -> Unit, onOpenS
 }
 
 @Composable
-private fun Diagnostics(container: AppContainer, padding: PaddingValues, s: UiStrings) {
+private fun Diagnostics(container: AppContainer, padding: PaddingValues, requestSmsPermission: () -> Unit, s: UiStrings) {
     val settings by container.settingsRepository.settings.collectAsState(initial = com.svllvsx.notifyrelay.domain.model.AppSettings())
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var showSmsHelp by remember { mutableStateOf(false) }
     var testStatus by remember(s) { mutableStateOf(s.testNotSent) }
     LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { ScreenTitle(s.diagnosticsTitle, s.diagnosticsSubtitle) }
         item { StatusCard(Icons.Rounded.Dns, s.server, settings.serverUrl.ifBlank { s.notSet }, RelayTone.Primary) }
-        item { StatusCard(Icons.Rounded.Notifications, s.notificationAccess, if (container.permissionsRepository.hasNotificationAccess()) s.enabled else s.noAccess, if (container.permissionsRepository.hasNotificationAccess()) RelayTone.Success else RelayTone.Warning) }
-        item { StatusCard(Icons.Rounded.Sms, s.smsAccess, if (container.permissionsRepository.hasSmsPermission()) s.allowed else s.noAccess, if (container.permissionsRepository.hasSmsPermission()) RelayTone.Success else RelayTone.Warning) }
+        item { PermissionRow(Icons.Rounded.Notifications, s.notificationAccess, container.permissionsRepository.hasNotificationAccess(), s) { context.startActivity(container.permissionsRepository.notificationSettingsIntent()) } }
+        item { PermissionRow(Icons.Rounded.Sms, s.smsAccess, container.permissionsRepository.hasSmsPermission(), s) { showSmsHelp = true } }
         item { StatusCard(Icons.Rounded.CloudOff, s.lastError, settings.lastSyncError ?: s.noErrors, if (settings.lastSyncError == null) RelayTone.Success else RelayTone.Error) }
         item {
             SectionCard {
@@ -535,6 +543,19 @@ private fun Diagnostics(container: AppContainer, padding: PaddingValues, s: UiSt
                 ) { Text(s.sendTest) }
             }
         }
+    }
+    if (showSmsHelp) {
+        SmsPermissionHelpDialog(s,
+            onDismiss = { showSmsHelp = false },
+            onOpenSettings = {
+                showSmsHelp = false
+                context.startActivity(container.permissionsRepository.appDetailsSettingsIntent())
+            },
+            onRequestPermission = {
+                showSmsHelp = false
+                requestSmsPermission()
+            },
+        )
     }
 }
 
@@ -606,7 +627,7 @@ private enum class RelayTone { Primary, Success, Warning, Error }
 }
 @Composable private fun HeroStatusCard(icon: ImageVector, title: String, text: String, detail: String) { val colors = toneColors(RelayTone.Success); Card(shape = RelayShape.hero, colors = CardDefaults.cardColors(containerColor = colors.first, contentColor = colors.second), modifier = Modifier.fillMaxWidth()) { Row(Modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) { Icon(icon, null, modifier = Modifier.size(34.dp)); Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(title, style = MaterialTheme.typography.titleLarge); Text(text); Text(detail, style = MaterialTheme.typography.labelLarge) } } } }
 @Composable private fun QueueCard(pending: Int, failed: Int, error: String?, s: UiStrings) { SectionCard { Text(s.eventQueue, style = MaterialTheme.typography.titleMedium); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { Metric(s.pending, pending.toString(), Modifier.weight(1f)); Metric(s.failed, failed.toString(), Modifier.weight(1f)); Metric(s.status, if (error == null) s.ok else s.error, Modifier.weight(1f)) } } }
-@Composable private fun RelayPowerCard(enabled: Boolean, batteryOptimized: Boolean, s: UiStrings, onEnabledChange: (Boolean) -> Unit, onBattery: () -> Unit) { val tone = if (enabled) RelayTone.Success else RelayTone.Warning; val colors = toneColors(tone); Card(shape = RelayShape.cardSmall, colors = CardDefaults.cardColors(containerColor = colors.first, contentColor = colors.second), modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Hub, null, modifier = Modifier.size(30.dp)); Column(Modifier.weight(1f)) { Text(if (enabled) s.relayEnabled else s.relayDisabled, style = MaterialTheme.typography.titleMedium); Text(s.keepAliveActive, style = MaterialTheme.typography.bodyMedium) }; Switch(enabled, onEnabledChange) }; if (batteryOptimized) { Text(s.batteryOptimized, style = MaterialTheme.typography.bodyMedium); Button(onClick = onBattery, modifier = Modifier.fillMaxWidth(), shape = RelayShape.pill, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = colors.second, contentColor = colors.first)) { Text(s.disableBatteryOptimization) } } } } }
+@Composable private fun RelayPowerCard(enabled: Boolean, batteryOptimized: Boolean, notificationPermissionMissing: Boolean, s: UiStrings, onEnabledChange: (Boolean) -> Unit, onNotificationPermission: () -> Unit, onBattery: () -> Unit) { val tone = if (enabled) RelayTone.Success else RelayTone.Warning; val colors = toneColors(tone); Card(shape = RelayShape.cardSmall, colors = CardDefaults.cardColors(containerColor = colors.first, contentColor = colors.second), modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Hub, null, modifier = Modifier.size(30.dp)); Column(Modifier.weight(1f)) { Text(if (enabled) s.relayEnabled else s.relayDisabled, style = MaterialTheme.typography.titleMedium); Text(s.keepAliveActive, style = MaterialTheme.typography.bodyMedium) }; Switch(enabled, onEnabledChange) }; if (notificationPermissionMissing) { Text(s.statusNotificationPermission, style = MaterialTheme.typography.bodyMedium); Button(onClick = onNotificationPermission, modifier = Modifier.fillMaxWidth(), shape = RelayShape.pill, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = colors.second, contentColor = colors.first)) { Text(s.notifications) } }; if (batteryOptimized) { Text(s.batteryOptimized, style = MaterialTheme.typography.bodyMedium); Button(onClick = onBattery, modifier = Modifier.fillMaxWidth(), shape = RelayShape.pill, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = colors.second, contentColor = colors.first)) { Text(s.disableBatteryOptimization) } } } } }
 @Composable private fun RecentEventsCard(events: List<EventEntity>, s: UiStrings) { SectionCard { Text(s.recentEvents, style = MaterialTheme.typography.titleMedium); if (events.isEmpty()) { Text(s.noRecentEvents, color = MaterialTheme.colorScheme.onSurfaceVariant) } else { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { events.take(20).forEach { RecentEventRow(it) } } } } }
 @Composable private fun RecentEventRow(event: EventEntity) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(event.appLabel ?: event.sender ?: event.packageName ?: event.type.uppercase(), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(event.bigText?.takeIf { it.isNotBlank() } ?: event.text ?: event.title ?: event.type, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis) }; StatusDot(event.status) } }
 @Composable private fun StatusDot(status: String) { val color = when (status) { EventStatus.SENT -> Color(0xFF52D273); EventStatus.FAILED -> MaterialTheme.colorScheme.error; else -> Color(0xFFFFC857) }; Box(Modifier.size(12.dp).background(color, RelayShape.pill)) }

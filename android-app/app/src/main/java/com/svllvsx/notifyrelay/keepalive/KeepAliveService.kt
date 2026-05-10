@@ -31,7 +31,7 @@ class KeepAliveService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun buildNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_launcher_foreground)
+        .setSmallIcon(R.drawable.ic_stat_notify_relay)
         .setContentTitle("Notify Relay")
         .setContentText("Relay is active and waiting for notifications")
         .setOngoing(true)

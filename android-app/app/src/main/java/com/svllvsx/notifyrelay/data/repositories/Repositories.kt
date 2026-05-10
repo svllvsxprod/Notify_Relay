@@ -34,8 +34,10 @@ import com.svllvsx.notifyrelay.domain.model.AppLanguage
 import com.svllvsx.notifyrelay.domain.model.PrivacyMode
 import com.svllvsx.notifyrelay.util.DeviceInfoUtils
 import com.svllvsx.notifyrelay.util.PermissionUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import retrofit2.Response
 import java.text.Collator
 import java.util.Locale
@@ -172,65 +174,69 @@ class PermissionsRepository(private val context: Context) {
 data class UpdateInfo(val latestVersion: String, val releaseUrl: String, val apkUrl: String?, val apkName: String?, val hasUpdate: Boolean)
 
 class UpdatesRepository(private val context: Context) {
-    suspend fun checkLatestRelease(): AppResult<UpdateInfo> = try {
-        val connection = (URL("https://api.github.com/repos/svllvsxprod/Notify_Relay/releases/latest").openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 10_000
-            readTimeout = 10_000
-            setRequestProperty("Accept", "application/vnd.github+json")
-            setRequestProperty("User-Agent", "NotifyRelay/${BuildConfig.VERSION_NAME}")
-        }
-        connection.inputStream.bufferedReader().use { reader ->
-            val json = JSONObject(reader.readText())
-            val tag = json.getString("tag_name")
-            val url = json.getString("html_url")
-            val assets = json.getJSONArray("assets")
-            var apkUrl: String? = null
-            var apkName: String? = null
-            for (index in 0 until assets.length()) {
-                val asset = assets.getJSONObject(index)
-                val name = asset.getString("name")
-                if (name.endsWith(".apk", ignoreCase = true)) {
-                    apkName = name
-                    apkUrl = asset.getString("browser_download_url")
-                    break
-                }
+    suspend fun checkLatestRelease(): AppResult<UpdateInfo> = withContext(Dispatchers.IO) {
+        try {
+            val connection = (URL("https://api.github.com/repos/svllvsxprod/Notify_Relay/releases/latest").openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 10_000
+                readTimeout = 10_000
+                setRequestProperty("Accept", "application/vnd.github+json")
+                setRequestProperty("User-Agent", "NotifyRelay/${BuildConfig.VERSION_NAME}")
             }
-            AppResult.Success(UpdateInfo(tag, url, apkUrl, apkName, isNewerVersion(tag.removePrefix("v"), BuildConfig.VERSION_NAME)))
+            connection.inputStream.bufferedReader().use { reader ->
+                val json = JSONObject(reader.readText())
+                val tag = json.getString("tag_name")
+                val url = json.getString("html_url")
+                val assets = json.getJSONArray("assets")
+                var apkUrl: String? = null
+                var apkName: String? = null
+                for (index in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(index)
+                    val name = asset.getString("name")
+                    if (name.endsWith(".apk", ignoreCase = true)) {
+                        apkName = name
+                        apkUrl = asset.getString("browser_download_url")
+                        break
+                    }
+                }
+                AppResult.Success(UpdateInfo(tag, url, apkUrl, apkName, isNewerVersion(tag.removePrefix("v"), BuildConfig.VERSION_NAME)))
+            }
+        } catch (_: Exception) {
+            AppResult.Error(AppError.Network)
         }
-    } catch (_: Exception) {
-        AppResult.Error(AppError.Network)
     }
 
-    suspend fun downloadApk(info: UpdateInfo, onProgress: (Float) -> Unit): AppResult<Uri> = try {
-        val apkUrl = requireNotNull(info.apkUrl)
-        val apkName = info.apkName ?: "Notify-Relay-${info.latestVersion}.apk"
-        val connection = (URL(apkUrl).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 15_000
-            readTimeout = 30_000
-            setRequestProperty("User-Agent", "NotifyRelay/${BuildConfig.VERSION_NAME}")
-        }
-        val total = connection.contentLengthLong.takeIf { it > 0L } ?: -1L
-        val directory = File(context.cacheDir, "updates").apply { mkdirs() }
-        val file = File(directory, apkName).apply { if (exists()) delete() }
-        var downloaded = 0L
-        connection.inputStream.use { input ->
-            file.outputStream().use { output ->
-                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read == -1) break
-                    output.write(buffer, 0, read)
-                    downloaded += read
-                    if (total > 0L) onProgress((downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f))
+    suspend fun downloadApk(info: UpdateInfo, onProgress: (Float) -> Unit): AppResult<Uri> = withContext(Dispatchers.IO) {
+        try {
+            val apkUrl = requireNotNull(info.apkUrl)
+            val apkName = info.apkName ?: "Notify-Relay-${info.latestVersion}.apk"
+            val connection = (URL(apkUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 15_000
+                readTimeout = 30_000
+                setRequestProperty("User-Agent", "NotifyRelay/${BuildConfig.VERSION_NAME}")
+            }
+            val total = connection.contentLengthLong.takeIf { it > 0L } ?: -1L
+            val directory = File(context.cacheDir, "updates").apply { mkdirs() }
+            val file = File(directory, apkName).apply { if (exists()) delete() }
+            var downloaded = 0L
+            connection.inputStream.use { input ->
+                file.outputStream().use { output ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        downloaded += read
+                        if (total > 0L) onProgress((downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f))
+                    }
                 }
             }
+            onProgress(1f)
+            AppResult.Success(FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.fileprovider", file))
+        } catch (_: Exception) {
+            AppResult.Error(AppError.Network)
         }
-        onProgress(1f)
-        AppResult.Success(FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.fileprovider", file))
-    } catch (_: Exception) {
-        AppResult.Error(AppError.Network)
     }
 
     fun installIntent(uri: Uri): Intent = Intent(Intent.ACTION_VIEW)

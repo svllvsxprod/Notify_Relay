@@ -4,8 +4,11 @@ import android.content.Context
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.svllvsx.notifyrelay.NotifyRelayApp
@@ -29,8 +32,17 @@ class WorkerScheduler(private val context: Context) {
     fun enqueueUpload() {
         val request = OneTimeWorkRequestBuilder<UploadEventsWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .setBackoffCriteria(androidx.work.BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork("upload_events", ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+    }
+
+    fun schedulePeriodicUpload() {
+        val request = PeriodicWorkRequestBuilder<UploadEventsWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setBackoffCriteria(androidx.work.BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork("upload_events_periodic", ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 }

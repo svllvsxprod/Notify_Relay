@@ -6,6 +6,15 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+import java.util.Properties
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use(::load)
+    }
+}
+
 android {
     namespace = "com.svllvsx.notifyrelay"
     compileSdk = 35
@@ -14,9 +23,20 @@ android {
         applicationId = "com.svllvsx.notifyrelay"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.2.0"
+        versionCode = 5
+        versionName = "1.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
     }
 
     buildTypes {
@@ -27,6 +47,9 @@ android {
         release {
             isMinifyEnabled = false
             manifestPlaceholders["cleartextTraffic"] = "false"
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

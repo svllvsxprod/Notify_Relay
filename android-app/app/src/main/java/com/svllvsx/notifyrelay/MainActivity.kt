@@ -1,5 +1,7 @@
 package com.svllvsx.notifyrelay
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,6 +12,7 @@ import com.svllvsx.notifyrelay.ui.theme.NotificationRelayTheme
 
 class MainActivity : ComponentActivity() {
     private val smsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -19,7 +22,12 @@ class MainActivity : ComponentActivity() {
                 Surface {
                     NotifyRelayAppRoot(
                         container = container,
-                        requestSmsPermission = { smsPermissionLauncher.launch(android.Manifest.permission.RECEIVE_SMS) },
+                        requestSmsPermission = { smsPermissionLauncher.launch(Manifest.permission.RECEIVE_SMS) },
+                        requestPostNotifications = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        },
                     )
                 }
             }

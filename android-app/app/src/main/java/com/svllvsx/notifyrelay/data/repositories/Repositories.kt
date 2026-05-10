@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.PowerManager
 import android.provider.Settings
 import android.os.Build
 import androidx.core.content.FileProvider
@@ -146,6 +147,7 @@ class AppsRepository(private val context: Context, private val dao: SelectedAppD
 class PermissionsRepository(private val context: Context) {
     fun hasNotificationAccess(): Boolean = PermissionUtils.hasNotificationAccess(context)
     fun hasSmsPermission(): Boolean = PermissionUtils.hasSmsPermission(context)
+    fun isIgnoringBatteryOptimizations(): Boolean = (context.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(context.packageName)
     fun notificationSettingsIntent(): Intent {
         val componentName = ComponentName(context, AppNotificationListenerService::class.java).flattenToString()
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -159,6 +161,10 @@ class PermissionsRepository(private val context: Context) {
 
     fun appDetailsSettingsIntent(): Intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
         .setData(Uri.fromParts("package", context.packageName, null))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+    fun batteryOptimizationIntent(): Intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+        .setData(Uri.parse("package:${context.packageName}"))
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 }
 

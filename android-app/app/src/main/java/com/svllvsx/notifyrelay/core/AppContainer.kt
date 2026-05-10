@@ -16,7 +16,9 @@ import com.svllvsx.notifyrelay.domain.usecase.ApplyPrivacyModeUseCase
 import com.svllvsx.notifyrelay.domain.usecase.SaveNotificationEventUseCase
 import com.svllvsx.notifyrelay.domain.usecase.SaveSmsEventUseCase
 import com.svllvsx.notifyrelay.domain.usecase.UploadPendingEventsUseCase
+import com.svllvsx.notifyrelay.keepalive.KeepAliveService
 import com.svllvsx.notifyrelay.workers.WorkerScheduler
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,11 +39,17 @@ class AppContainer(private val context: Context) {
     val updatesRepository = UpdatesRepository(context)
     val workerScheduler = WorkerScheduler(context)
     val privacyModeUseCase = ApplyPrivacyModeUseCase(settingsRepository)
-    val saveNotificationEventUseCase = SaveNotificationEventUseCase(context, eventsRepository, appsRepository, privacyModeUseCase, workerScheduler)
+    val saveNotificationEventUseCase = SaveNotificationEventUseCase(context, eventsRepository, settingsRepository, appsRepository, privacyModeUseCase, workerScheduler)
     val saveSmsEventUseCase = SaveSmsEventUseCase(eventsRepository, settingsRepository, privacyModeUseCase, workerScheduler)
     val uploadPendingEventsUseCase = UploadPendingEventsUseCase(eventsRepository, apiClientFactory, settingsRepository)
 
     fun cleanupOldEvents() {
         scope.launch { eventsRepository.deleteSentOlderThan(System.currentTimeMillis() - 7L * 24L * 60L * 60L * 1000L) }
+    }
+
+    fun scheduleBackgroundWork() {
+        workerScheduler.schedulePeriodicUpload()
+        workerScheduler.enqueueUpload()
+        scope.launch { KeepAliveService.sync(context, settingsRepository.settings.first().notificationForwardingEnabled) }
     }
 }

@@ -48,6 +48,7 @@ data class PrivacyContent(val title: String?, val text: String?, val bigText: St
 class SaveNotificationEventUseCase(
     private val context: Context,
     private val eventsRepository: EventsRepository,
+    private val settingsRepository: SettingsRepository,
     private val appsRepository: AppsRepository,
     private val privacyMode: ApplyPrivacyModeUseCase,
     private val workerScheduler: WorkerScheduler,
@@ -55,6 +56,7 @@ class SaveNotificationEventUseCase(
     private val recentFingerprints = ArrayDeque<RecentNotificationFingerprint>()
 
     suspend operator fun invoke(sbn: StatusBarNotification) {
+        if (!settingsRepository.settings.first().notificationForwardingEnabled) return
         if (!appsRepository.isEnabled(sbn.packageName)) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && sbn.notification.channelId == "miscellaneous" && sbn.isOngoing) return
         val extras = sbn.notification.extras

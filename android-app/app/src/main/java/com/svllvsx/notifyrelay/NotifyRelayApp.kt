@@ -11,5 +11,6 @@ class NotifyRelayApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         container.cleanupOldEvents()
+        container.scheduleBackgroundWork()
     }
 }

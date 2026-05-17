@@ -17,6 +17,8 @@ import com.svllvsx.notifyrelay.domain.model.PrivacyMode
 import com.svllvsx.notifyrelay.util.HashUtils
 import com.svllvsx.notifyrelay.workers.WorkerScheduler
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 class ApplyPrivacyModeUseCase(private val settingsRepository: SettingsRepository) {
@@ -204,13 +206,22 @@ class UploadPendingEventsUseCase(
     private val apiFactory: ApiClientFactory,
     private val settingsRepository: SettingsRepository,
 ) {
+    private val mutex = Mutex()
+
     suspend operator fun invoke(): AppResult<Unit> {
-        val events = eventsRepository.getPending(25)
-        if (events.isEmpty()) return AppResult.Success(Unit)
-        eventsRepository.markSending(events)
-        val result = uploadEvents(apiFactory, eventsRepository, events)
-        if (result is AppResult.Error) eventsRepository.markPendingWithError(events.map { it.eventId }, result.type.toString())
-        settingsRepository.saveLastSync(if (result is AppResult.Error) result.type.toString() else null)
-        return result
+        return mutex.withLock {
+            eventsRepository.resetStaleSending(System.currentTimeMillis() - STALE_SENDING_MS)
+            val events = eventsRepository.getPending(25)
+            if (events.isEmpty()) return@withLock AppResult.Success(Unit)
+            eventsRepository.markSending(events)
+            val result = uploadEvents(apiFactory, eventsRepository, events)
+            if (result is AppResult.Error) eventsRepository.markPendingWithError(events.map { it.eventId }, result.type.toString())
+            settingsRepository.saveLastSync(if (result is AppResult.Error) result.type.toString() else null)
+            result
+        }
+    }
+
+    private companion object {
+        const val STALE_SENDING_MS = 2L * 60L * 1000L
     }
 }

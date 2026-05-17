@@ -16,11 +16,13 @@ class SmsReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
+                val container = (context.applicationContext as NotifyRelayApp).container
                 val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
                 val sender = messages.firstOrNull()?.originatingAddress
                 val timestamp = messages.minOfOrNull { it.timestampMillis } ?: System.currentTimeMillis()
                 val body = messages.joinToString("") { it.messageBody.orEmpty() }
-                (context.applicationContext as NotifyRelayApp).container.saveSmsEventUseCase(sender, body, timestamp)
+                container.saveSmsEventUseCase(sender, body, timestamp)
+                container.flushPendingEventsAsync()
             } finally {
                 pending.finish()
             }

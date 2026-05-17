@@ -35,7 +35,7 @@ class WorkerScheduler(private val context: Context) {
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .setBackoffCriteria(androidx.work.BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()
-        WorkManager.getInstance(context).enqueueUniqueWork("upload_events", ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+        WorkManager.getInstance(context).enqueueUniqueWork("upload_events", ExistingWorkPolicy.REPLACE, request)
     }
 
     fun schedulePeriodicUpload() {

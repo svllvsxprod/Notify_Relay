@@ -21,7 +21,7 @@ class StartupReceiver : BroadcastReceiver() {
             CoroutineScope(Dispatchers.IO).launch {
                 runCatching {
                     val settings = AppSettingsDataStore(context.applicationContext).settings.first()
-                    KeepAliveService.sync(context.applicationContext, settings.notificationForwardingEnabled)
+                    KeepAliveService.sync(context.applicationContext, settings.notificationForwardingEnabled || settings.smsForwardingEnabled)
                 }
                 pendingResult.finish()
             }

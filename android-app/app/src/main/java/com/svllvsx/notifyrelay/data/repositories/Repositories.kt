@@ -114,6 +114,7 @@ class EventsRepository(private val dao: EventDao) {
     suspend fun markSent(eventIds: List<String>) = dao.markSentByEventIds(eventIds)
     suspend fun markRejected(eventIds: List<String>, reason: String) = dao.markFailed(eventIds, reason)
     suspend fun markPendingWithError(eventIds: List<String>, error: String) = dao.markPendingWithError(eventIds, error)
+    suspend fun resetStaleSending(threshold: Long) = dao.resetStaleSending(threshold)
     suspend fun deleteSentOlderThan(timestamp: Long) = dao.deleteSentOlderThan(timestamp)
 }
 

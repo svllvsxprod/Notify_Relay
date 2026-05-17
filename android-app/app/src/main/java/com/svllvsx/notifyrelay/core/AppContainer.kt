@@ -50,6 +50,13 @@ class AppContainer(private val context: Context) {
     fun scheduleBackgroundWork() {
         workerScheduler.schedulePeriodicUpload()
         workerScheduler.enqueueUpload()
-        scope.launch { KeepAliveService.sync(context, settingsRepository.settings.first().notificationForwardingEnabled) }
+        scope.launch {
+            val settings = settingsRepository.settings.first()
+            KeepAliveService.sync(context, settings.notificationForwardingEnabled || settings.smsForwardingEnabled)
+        }
+    }
+
+    fun flushPendingEventsAsync() {
+        scope.launch { uploadPendingEventsUseCase() }
     }
 }

@@ -17,8 +17,14 @@
     <td align="center" width="760">
       <h3>Помогите Notify Relay оставаться независимым</h3>
       <p>Если проект оказался полезен, можно поддержать дальнейшую разработку, тестирование и серверные инструменты.</p>
+      <a href="https://t.me/tribute/app?startapp=dK9j">
+        <img alt="Поддержать через Tribute" src="https://img.shields.io/badge/Поддержать%20Notify%20Relay-Tribute-229ED9?style=for-the-badge&logo=telegram&logoColor=white&labelColor=111827">
+      </a>
       <a href="https://nowpayments.io/donation/svllvsx">
         <img alt="Поддержать через NOWPayments" src="https://img.shields.io/badge/Поддержать%20Notify%20Relay-NOWPayments-7C3AED?style=for-the-badge&logo=bitcoin&logoColor=white&labelColor=111827">
+      </a>
+      <a href="https://t.me/svllvsxprod">
+        <img alt="Telegram svllvsxprod" src="https://img.shields.io/badge/Telegram-svllvsxprod-26A5E4?style=for-the-badge&logo=telegram&logoColor=white&labelColor=111827">
       </a>
     </td>
   </tr>
@@ -211,7 +217,7 @@ docker compose up -d --build
 ## Установка Android-Приложения
 
 1. Откройте последний GitHub Release.
-2. Скачайте APK с именем вида `Notify-Relay-v1.5.3-release.apk`.
+2. Скачайте APK с именем вида `Notify-Relay-v1.5.4-release.apk`.
 3. Установите APK на Android-устройство.
 4. Откройте приложение.
 5. Введите URL сервера.

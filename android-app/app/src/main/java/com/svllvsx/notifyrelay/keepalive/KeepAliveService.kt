@@ -9,9 +9,20 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.svllvsx.notifyrelay.NotifyRelayApp
 import com.svllvsx.notifyrelay.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class KeepAliveService : Service() {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var flushLoopStarted = false
+
     override fun onCreate() {
         super.onCreate()
         ensureChannel()
@@ -25,10 +36,27 @@ class KeepAliveService : Service() {
         }
 
         startForeground(NOTIFICATION_ID, buildNotification())
+        startFlushLoop()
         return START_STICKY
     }
 
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun startFlushLoop() {
+        if (flushLoopStarted) return
+        flushLoopStarted = true
+        scope.launch {
+            while (isActive) {
+                runCatching { (application as NotifyRelayApp).container.uploadPendingEventsUseCase() }
+                delay(FLUSH_INTERVAL_MS)
+            }
+        }
+    }
 
     private fun buildNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
         .setSmallIcon(R.drawable.ic_stat_notify_relay)
@@ -52,6 +80,7 @@ class KeepAliveService : Service() {
         private const val CHANNEL_ID = "notify_relay_keep_alive"
         private const val NOTIFICATION_ID = 1001
         private const val ACTION_STOP = "com.svllvsx.notifyrelay.keepalive.STOP"
+        private const val FLUSH_INTERVAL_MS = 60_000L
 
         fun start(context: Context) {
             runCatching { ContextCompat.startForegroundService(context, Intent(context, KeepAliveService::class.java)) }

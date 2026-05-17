@@ -13,6 +13,9 @@ class AppNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val container = (application as NotifyRelayApp).container
-        scope.launch { container.saveNotificationEventUseCase(sbn) }
+        scope.launch {
+            container.saveNotificationEventUseCase(sbn)
+            container.flushPendingEventsAsync()
+        }
     }
 }

@@ -24,6 +24,9 @@ interface EventDao {
     @Query("UPDATE events SET status = 'pending', lastError = :error WHERE eventId IN (:eventIds)")
     suspend fun markPendingWithError(eventIds: List<String>, error: String)
 
+    @Query("UPDATE events SET status = 'pending', lastError = 'stale_sending_retry' WHERE status = 'sending' AND createdAt < :threshold")
+    suspend fun resetStaleSending(threshold: Long)
+
     @Query("UPDATE events SET status = 'failed', lastError = :error WHERE eventId IN (:eventIds)")
     suspend fun markFailed(eventIds: List<String>, error: String)
 

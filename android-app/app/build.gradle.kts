@@ -23,8 +23,8 @@ android {
         applicationId = "com.svllvsx.notifyrelay"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.5.4"
+        versionCode = 10
+        versionName = "1.5.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

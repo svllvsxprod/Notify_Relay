@@ -17,15 +17,15 @@
     <td align="center" width="760">
       <h3>Keep Notify Relay independent</h3>
       <p>If this project helps you, support further development, testing, and server tooling.</p>
-      <a href="https://t.me/tribute/app?startapp=dK9j">
-        <img alt="Support via Tribute" src="https://img.shields.io/badge/Support%20Notify%20Relay-Tribute-229ED9?style=for-the-badge&logo=telegram&logoColor=white&labelColor=111827">
-      </a>
-      <a href="https://nowpayments.io/donation/svllvsx">
-        <img alt="Support with crypto via NOWPayments" src="https://img.shields.io/badge/Support%20Notify%20Relay-NOWPayments-7C3AED?style=for-the-badge&logo=bitcoin&logoColor=white&labelColor=111827">
-      </a>
-      <a href="https://t.me/svllvsxprod">
-        <img alt="svllvsxprod Telegram" src="https://img.shields.io/badge/Telegram-svllvsxprod-26A5E4?style=for-the-badge&logo=telegram&logoColor=white&labelColor=111827">
-      </a>
+      <table align="center">
+        <tr>
+          <td align="center" width="350"><a href="https://t.me/tribute/app?startapp=dK9j"><img src="screens/donate-tribute-notify.svg" width="340" alt="Support Notify Relay via Tribute" /></a></td>
+          <td align="center" width="350"><a href="https://nowpayments.io/donation/svllvsx"><img src="screens/donate-nowpayments-notify.svg" width="340" alt="Support Notify Relay via NOWPayments" /></a></td>
+        </tr>
+        <tr>
+          <td align="center" colspan="2"><a href="https://t.me/svllvsxprod"><img src="screens/telegram-svllvsxprod-notify.svg" width="340" alt="svllvsxprod Telegram" /></a></td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>
@@ -217,7 +217,7 @@ docker compose up -d --build
 ## Install The Android App
 
 1. Open the latest GitHub Release.
-2. Download the APK asset named like `Notify-Relay-v1.5.4-release.apk`.
+2. Download the APK asset named like `Notify-Relay-v1.5.5-release.apk`.
 3. Install it on your Android device.
 4. Open the app.
 5. Enter your server URL.
